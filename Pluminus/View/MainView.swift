@@ -10,14 +10,16 @@ import SwiftUI
 import WrappingHStack
 
 struct MainView: View {
+    @StateObject var locationManager = MyLocationManager()
+    
+    @Namespace private var animation
+    
     @State var isLaunching: Bool = true
     
     @State private var currentLocalName: String = ""
     @State private var selectedPicker: [Int] = [0, 0]
     @State private var isShowingResult: Bool = false
-    @State private var isShowingSearchingLabel: Bool = true
     @State private var isShowingSettingView: Bool = false
-    @State private var isShowingLocalSelectView: Bool = false
     
     @State private var isShowingCLMapView: Bool = false
     @State private var savedLocation: CLLocationCoordinate2D?
@@ -28,13 +30,10 @@ struct MainView: View {
     @State private var currentTimeHMMSSString: String = ""
     @State private var currentDateStirng: String = ""
     
-    @StateObject var locationManager = MyLocationManager()
-    
     @State private var dataSource: [[String]] = [["+","-"], []]
     @State private var pickerFastOrSlow: [String] = ["ahead", "+"]
     @State private var pickerHour: Int = 0
     
-    @Namespace private var animation
     @State private var expandedCountry: Country? = nil
     @State private var hiddenCountryIndices: Set<Int> = []
     @State private var offset: CGFloat = .zero
@@ -53,36 +52,34 @@ struct MainView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(currentTimeAString)
-                            .font(.system(size: 64, weight: isShowingResult ? .thin : .heavy))
-                            .foregroundStyle(isShowingResult ? .white : .primary)
+                            .font(.system(size: isShowingResult ? 32 : 72, weight: isShowingResult ? .thin : .heavy))
+                            .foregroundStyle(isShowingResult ? Color.white : Color.primary)
                             .contentTransition(.numericText())
                         
                         Text(currentTimeHMMSSString)
-                            .font(.system(size: 64, weight: isShowingResult ? .thin : .heavy))
-                            .foregroundStyle(isShowingResult ? .white : .primary)
+                            .font(.system(size: 72, weight: isShowingResult ? .thin : .heavy))
+                            .foregroundStyle(isShowingResult ? Color.white : Color.primary)
                             .contentTransition(.numericText())
                         
                         Text(currentDateStirng)
-                            .font(.system(size: 17, weight: .regular))
-                            .foregroundStyle(isShowingResult ? .white : .primary)
+                            .font(.system(size: 20, weight: isShowingResult ? .light : .bold))
+                            .foregroundStyle(isShowingResult ? Color.white : Color.primary)
                             .contentTransition(.numericText())
                     } // VStack
                     
                     Spacer()
                     
-                    // 설정 버튼
-                    if isShowingResult == false {
-                        Button {
+                    //Setting Button
+                    Image(systemName: "gearshape.fill")
+                        .resizable()
+                        .frame(width: 28, height: 28)
+                        .foregroundStyle(isShowingResult ? Color.clear : Color.gray.opacity(0.4))
+                        .padding(.top, 12)
+                        .onTapGesture {
                             HapticManager.instance.impact(style: .light)
                             isShowingSettingView = true
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .resizable()
-                                .frame(width: 28, height: 28)
-                                .foregroundStyle(.gray.opacity(0.4))
-                                .padding(.top, 12)
                         }
-                    }
+                        .disabled(isShowingResult == true)
                 } //HStack
                 .padding(.top, 12)
                 
@@ -90,19 +87,19 @@ struct MainView: View {
                 HStack {
                     Spacer()
                     
-                    Button {
-                        HapticManager.instance.impact(style: .rigid)
-                        isShowingCLMapView = true
-                    } label: {
-                        Image(isShowingResult ? "locationPin.white" : "locationPin.orange")
-                            .resizable()
-                            .frame(width: 15, height: 19)
-                        Text(currentLocalName)
-                            .font(.system(size: 20, weight: .heavy))
-                            .foregroundColor(isShowingResult ? .white : .primary)
-                        
-                    }
-                    .disabled(isShowingResult == true)
+                    Image("locationPin")
+                        .renderingMode(.template)
+                        .resizable()
+                        .frame(width: 15, height: 19)
+                        .foregroundStyle(isShowingResult ? Color.white : Color.orange)
+                    Text(currentLocalName)
+                        .font(.system(size: 20, weight: .heavy))
+                        .foregroundStyle(isShowingResult ? Color.white : Color.primary)
+                        .onTapGesture {
+                            HapticManager.instance.impact(style: .rigid)
+                            isShowingCLMapView = true
+                        }
+                        .disabled(isShowingResult == true)
                 } // HStack
                 .padding(.top, 8)
                 
@@ -133,11 +130,11 @@ struct MainView: View {
                     HStack(alignment: .bottom) {
                         Text(Date().currentLocalTime(tzOffset: selectPickerResult(selectedPicker: selectedPicker)))
                             .font(.system(size: 64, weight: .heavy))
-                            .foregroundColor(.white)
+                            .foregroundStyle(Color.white)
                         
                         Text("GMT\(showingTargetLocalGMT(selectedPicker: selectedPicker))")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(Color.white.opacity(0.7))
                             .padding(.bottom, 16)
                         
                         Spacer()
@@ -146,7 +143,7 @@ struct MainView: View {
                     HStack {
                         Text(Date().currentLocalDate(tzOffset: selectPickerResult(selectedPicker: selectedPicker)))
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(Color.white)
                             .padding(.leading, 4)
                         
                         Spacer()
@@ -163,18 +160,17 @@ struct MainView: View {
                     )
                 } //else
                 
-                // 확인/돌아오기 버튼
+                //TimeGap Search Button
                 Button {
                     HapticManager.instance.notification(type: .warning)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         withAnimation(.spring) {
                             isShowingResult.toggle()
-                            isShowingSearchingLabel.toggle()
                         }
                     }
                 } label: {
                     Image(systemName: "arrow.forward")
-                        .rotationEffect(.degrees(isShowingSearchingLabel ? 0 : 180)) // 회전 효과 추가
+                        .rotationEffect(.degrees(isShowingResult ? 180 : 0)) // 회전 효과 추가
                         .foregroundStyle(.white)
                         .font(.system(size: 24, weight: .black))
                         .frame(maxWidth: 500, maxHeight: 70)
@@ -191,14 +187,14 @@ struct MainView: View {
                     .presentationDetents([.large])
                     .presentationCornerRadius(32)
             }
-            .sheet(isPresented: $isShowingCLMapView, content: {
+            .sheet(isPresented: $isShowingCLMapView) {
                 CLMapView(isShowingCLMapView: $isShowingCLMapView, savedLocation: $savedLocation) { locationName in
                     cLName = locationName
                     isShowingCLMapView = false // Dismiss sheet after saving
                 }
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
-            })
+            }
             .background(
                 BackColorView(
                     isShowingResult: $isShowingResult,
@@ -207,47 +203,46 @@ struct MainView: View {
             )
             .statusBarHidden()
             
+            //Indexing Country Detail View
             if let expandedCountry = expandedCountry {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                 
-                VStack {
-                    NationDetailView(
-                        countryName: $tappedCountry,
-                        continent: $tappedContinent,
-                        pickerFastOrSlow: $pickerFastOrSlow,
-                        pickerHour: $pickerHour,
-                        selectedPicker: $selectedPicker
-                    )
-                    .frame(maxWidth: .infinity)
-                    .background(.thickMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 32))
-                    .matchedGeometryEffect(id: expandedCountry.hashValue, in: animation)
-                    .padding(.top, 20)
-                    .offset(y: offset)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                let yOffset = value.translation.height
-                                if yOffset > 0 {
-                                    offset = yOffset
+                NationDetailView(
+                    countryName: $tappedCountry,
+                    continent: $tappedContinent,
+                    pickerFastOrSlow: $pickerFastOrSlow,
+                    pickerHour: $pickerHour,
+                    selectedPicker: $selectedPicker
+                )
+                .frame(maxWidth: .infinity)
+                .background(.thickMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 32))
+                .matchedGeometryEffect(id: expandedCountry.hashValue, in: animation)
+                .padding(.top, 20)
+                .offset(y: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            let yOffset = value.translation.height
+                            if yOffset > 0 {
+                                offset = yOffset
+                            }
+                        }
+                        .onEnded { value in
+                            if offset > threshold {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85, blendDuration: 0.1)) {
+                                    self.expandedCountry = nil
+                                    offset = .zero
+                                    hiddenCountryIndices.remove(expandedCountry.hashValue)
+                                }
+                            } else {
+                                withAnimation {
+                                    offset = .zero
                                 }
                             }
-                            .onEnded { value in
-                                if offset > threshold {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85, blendDuration: 0.1)) {
-                                        self.expandedCountry = nil
-                                        offset = .zero
-                                        hiddenCountryIndices.remove(expandedCountry.hashValue)
-                                    }
-                                } else {
-                                    withAnimation {
-                                        offset = .zero
-                                    }
-                                }
-                            }
-                    )
-                }
+                        }
+                )
                 .zIndex(1)
                 .edgesIgnoringSafeArea(.bottom)
             }
@@ -255,7 +250,7 @@ struct MainView: View {
             if isLaunching {
                 SplashView()
             }
-        } // ZStack
+        } //ZStack
         .onReceive(locationManager.$currentLocalName) { newLocation in
             self.currentLocalName = newLocation
         }
@@ -273,7 +268,7 @@ struct MainView: View {
                 }
             }
         }
-    } // body
+    } //body
     
     func cTimeA(tzOffset: Int) -> String {
         let fmt = DateFormatter()
@@ -310,4 +305,4 @@ struct MainView: View {
         
         return fmt.string(from: Date())
     }
-} // struct
+} //struct
