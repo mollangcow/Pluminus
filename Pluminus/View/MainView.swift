@@ -32,28 +32,24 @@ struct MainView: View {
     
     @State private var dataSource: [[String]] = [["+","-"], []]
     @State private var pickerFastOrSlow: [String] = ["ahead", "+"]
-    @State private var rectangleHeight: CGFloat = 1
     @State private var pickerHour: Int = 0
     
-    @State private var spacerWidth: CGFloat = 0
-    
     @Namespace private var animation
-    
     @State private var expandedCountry: Country? = nil
-    @State private var offset: CGFloat = .zero
     @State private var hiddenCountryIndices: Set<Int> = []
-    
-    private let threshold: CGFloat = 100
-    
+    @State private var offset: CGFloat = .zero
     @State private var isShowingMap: Bool = false
     @State private var tappedCountry: String = ""
     @State private var tappedContinent: String = ""
+    
+    private let threshold: CGFloat = 100
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
+                //BaseTime Section
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(currentTimeAString)
@@ -90,7 +86,7 @@ struct MainView: View {
                 } //HStack
                 .padding(.top, 12)
                 
-                // 기준 시간을 설정하는 위치
+                //BaseLocation Section
                 HStack {
                     Spacer()
                     
@@ -113,164 +109,25 @@ struct MainView: View {
                 if isShowingResult == false {
                     Spacer()
                     
-                    HStack {
-                        CustomPicker(dataSource: $dataSource, selectedPicker: $selectedPicker)
-                            .frame(width:160)
-                            .id(dataSource)
-                            .onChange(of: selectedPicker[0]) { oldValue, newValue in
-                                print(">>>>> Picker OnChange [0] : \(selectedPicker[0])")
-                                withAnimation {
-                                    pickerFastOrSlow = newValue == 0 ? ["ahead", "+"] : ["behind", "-"]
-                                    _ = hourRange
-                                    dataSource[1] = Array(hourRange).map { String($0) }
-                                    selectedPicker[1] = 0
-                                    _ = calcTargetLocalGMT(selectedPicker: selectedPicker)
-                                }
-                            }
-                            .onChange(of: selectedPicker[1]) { oldValue, newValue in
-                                HapticManager.instance.impact(style: .medium)
-                                print(">>>>> Picker OnChange [1] : \(selectedPicker[1])")
-                                withAnimation {
-                                    pickerHour = newValue
-                                    _ = hourRange
-                                    dataSource[1] = Array(hourRange).map { String($0) }
-                                    _ = calcTargetLocalGMT(selectedPicker: selectedPicker)
-                                }
-                            }
-                            .onChange(of: dataSource) { oldValue, newValue in
-                                HapticManager.instance.impact(style: .medium)
-                                print("<<<<< Picker OnChange(dataSource)")
-                                withAnimation {
-                                    _ = hourRange
-                                    dataSource[1] = Array(hourRange).map { String($0) }
-                                }
-                            }
-                            .onAppear(perform: {
-                                print("^^^^^ Picker OnAppear")
-                                _ = calcTargetLocalGMT(selectedPicker: selectedPicker)
-                                _ = hourRange
-                                dataSource[1] = Array(hourRange).map { String($0) }
-                            })
-                            .onDisappear {
-                                print("^^^^^ Picker OnDisappear")
-                                _ = calcTargetLocalGMT(selectedPicker: selectedPicker)
-                                _ = hourRange
-                                dataSource[1] = Array(hourRange).map { String($0) }
-                            }
-                        
-                        Text("Hour")
-                            .font(.system(size: 17, weight: .bold))
-                    }
+                    PickerComponent(
+                        selectedPicker: $selectedPicker,
+                        dataSource: $dataSource,
+                        pickerFastOrSlow: $pickerFastOrSlow,
+                        pickerHour: $pickerHour
+                    )
                     
                     Spacer()
                     
-                    // GMT 시간대 시각화 그래프
-                    ZStack {
-                        HStack {
-                            Text("GMT-12")
-                                .font(.system(size: 7, weight: .regular))
-                            
-                            Rectangle()
-                                .frame(width: 260, height: 1)
-                                .foregroundColor(.gray.opacity(0.3))
-                            
-                            Text("GMT+14")
-                                .font(.system(size: 7, weight: .regular))
-                        } //HStack
-                        
-                        
-                        // base location pin
-                        HStack {
-                            Spacer()
-                                .frame(width: pickerVisualStaticSpacer())
-                            
-                            RoundedRectangle(cornerRadius: 1)
-                                .frame(width: 2, height: 10)
-                                .foregroundColor(.primary.opacity(0.3))
-                            
-                            Spacer()
-                        } //HStack
-                        .frame(width: 260)
-                        
-                        // target location pin
-                        HStack {
-                            Spacer()
-                                .frame(width: spacerWidth)
-                                .onAppear {
-                                    withAnimation {
-                                        self.spacerWidth = pickerVisualMovingSpacer()
-                                    }
-                                }
-                                .onChange(of: selectedPicker) { oldValue, newValue in
-                                    if oldValue != newValue {
-                                        withAnimation {
-                                            self.spacerWidth = pickerVisualMovingSpacer()
-                                        }
-                                    }
-                                }
-                            
-                            RoundedRectangle(cornerRadius: 1)
-                                .frame(width: 2, height: 10)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                        } //HStack
-                        .frame(width: 260)
-                    } //ZStack
-                    
-                    if pickerHour == 0  {
-                        Text("Same time zone as base")
-                            .font(.system(size: 14, weight: .regular))
-                            .padding(.top, 10)
-                            .padding(.bottom, 40)
-                            .contentTransition(.numericText())
-                    } else {
-                        Text("\(pickerHour)hours \(pickerFastOrSlow[0]) of base")
-                            .font(.system(size: 14, weight: .regular))
-                            .padding(.top, 10)
-                            .padding(.bottom, 40)
-                            .contentTransition(.numericText())
-                    }
+                    PickerVisualBarComponent(
+                        selectedPicker: $selectedPicker,
+                        pickerFastOrSlow: $pickerFastOrSlow,
+                        pickerHour: $pickerHour
+                    )
                 } else {
-                    // Time gap visual graph
-                    HStack {
-                        VStack {
-                            HStack(alignment: .bottom) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(
-                                                colors: [
-                                                    .white.opacity(0),
-                                                    .white.opacity(1)
-                                                ]
-                                            ),
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                    .frame(width: 2, height: rectangleHeight)
-                                    .padding(.leading, 20)
-                                    .onAppear {
-                                        withAnimation(.spring(duration: 1.0)) {
-                                            rectangleHeight = calcTimeGapStrokeHeight(pickerHour: pickerHour)
-                                        }
-                                    }
-                                    .onDisappear {
-                                        rectangleHeight = 1
-                                    }
-                                
-                                Text("\(pickerFastOrSlow[1]) \(pickerHour)Hour")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            Spacer()
-                        }
-                        
-                        Spacer()
-                    }
-                    .frame(height: screenHeight * 0.18)
+                    TimeGapVisualGraphComponent(
+                        pickerFastOrSlow: $pickerFastOrSlow,
+                        pickerHour: $pickerHour
+                    )
                     
                     // Target Time
                     HStack(alignment: .bottom) {
@@ -285,7 +142,6 @@ struct MainView: View {
                         
                         Spacer()
                     }
-                    
                     // Target Date
                     HStack {
                         Text(Date().currentLocalDate(tzOffset: selectPickerResult(selectedPicker: selectedPicker)))
@@ -297,75 +153,15 @@ struct MainView: View {
                     }
                     .padding(.bottom, 4)
                     
-                    ScrollView {
-                        let countries = CountryList.list.GMT[calcTargetLocalGMT(selectedPicker: selectedPicker)]
-                        
-                        if countries != nil {
-                            WrappingHStack(countries!, id: \.self) { country in
-                                Button {
-                                    HapticManager.instance.impact(style: .rigid)
-                                    
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.95, blendDuration: 0.9)) {
-                                        if expandedCountry?.countryName == country.countryName {
-                                            expandedCountry = nil
-                                        } else {
-                                            expandedCountry = country
-                                            tappedCountry = country.countryName
-                                            tappedContinent = country.continent
-                                        }
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text(country.countryName)
-                                            .font(.system(size: 17, weight: .bold))
-                                            .padding(.horizontal, 6)
-                                            .frame(height: 24)
-                                            .minimumScaleFactor(0.7)
-                                            .foregroundStyle(Color.black)
-                                        if country.isHaveLocality {
-                                            Image(systemName: "ellipsis.circle.fill")
-                                                .resizable()
-                                                .frame(width: 24, height: 24)
-                                                .foregroundColor(.orange)
-                                        }
-                                    } // HStack
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .background(.white)
-                                    .clipShape(
-                                        RoundedRectangle(cornerRadius: 32)
-                                    )
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 32)
-                                            .strokeBorder(lineWidth: 1)
-                                            .foregroundStyle(Color.secondary.opacity(0.1))
-                                    }
-                                    .opacity(hiddenCountryIndices.contains(country.hashValue) ? 0 : 1)
-                                    .matchedGeometryEffect(id: country.hashValue, in: animation)
-                                } // Button
-                                .padding(.vertical, 4)
-                            } // WrappingHStack
-                            .padding(.vertical, 12)
-                        } else {
-                            Text("Indexing Error!")
-                                .font(.system(size: 17, weight: .black))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                    .mask(
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .clear, location: 0.0),
-                                .init(color: .black, location: 0.05),
-                                .init(color: .black, location: 0.95),
-                                .init(color: .clear, location: 1.0)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                    WrappedIndexingCountryComponent(
+                        animation: animation,
+                        expandedCountry: $expandedCountry,
+                        hiddenCountryIndices: $hiddenCountryIndices,
+                        tappedCountry: $tappedCountry,
+                        tappedContinent: $tappedContinent,
+                        selectedPicker: $selectedPicker
                     )
-                }
+                } //else
                 
                 // 확인/돌아오기 버튼
                 Button {
@@ -513,63 +309,5 @@ struct MainView: View {
         fmt.locale = Locale(identifier: "en_US")
         
         return fmt.string(from: Date())
-    }
-    
-    private func pickerVisualMovingSpacer() -> CGFloat {
-        let hour = calcTargetLocalGMT(selectedPicker: selectedPicker)
-        
-        if hour == -12 {
-            return 0
-        } else if hour == 0 {
-            return 130
-        } else if hour >= -11 && hour <= 14 {
-            return CGFloat(hour + 12) * 10
-        }
-        
-        return 0
-    }
-    
-    private func pickerVisualStaticSpacer() -> CGFloat {
-        let hour = calcCurrentLocalGMT()
-        
-        if hour == -12 {
-            return 0
-        } else if hour == 0 {
-            return 130
-        } else if hour >= -11 && hour <= 14 {
-            return CGFloat(hour + 12) * 10
-        }
-        
-        return 0
-    }
-    
-    private func calcTimeGapStrokeHeight(pickerHour: Int) -> CGFloat {
-        let minHeight: CGFloat = screenHeight * 0.02
-        let maxHeight: CGFloat = screenHeight * 0.2
-        let hourRange: ClosedRange<Int> = 0...27
-        
-        let normalizedHour = CGFloat(pickerHour - hourRange.lowerBound) / CGFloat(hourRange.upperBound - hourRange.lowerBound)
-        
-        let calculatedHeight = minHeight + (maxHeight - minHeight) * normalizedHour
-        
-        return calculatedHeight
-    }
-    
-    private var hourRange: ClosedRange<Int> {
-        var wrappedGMT = calcCurrentLocalGMT() <= -11 ? -10 : calcCurrentLocalGMT()
-        wrappedGMT = calcCurrentLocalGMT() >= 14 ? 13 : calcCurrentLocalGMT()
-        
-        if selectedPicker[0] == 0 {
-            let min = 0
-            let max = 14 - wrappedGMT
-            
-            return min...max
-            
-        } else {
-            let min = 0
-            let max = abs(-12 - wrappedGMT)
-            
-            return min...max
-        }
     }
 } // struct
