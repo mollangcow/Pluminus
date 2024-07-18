@@ -65,7 +65,7 @@ struct WrappedIndexingCountryComponent: View {
                         .opacity(hiddenCountryIndices.contains(country.hashValue) ? 0 : 1)
                         .matchedGeometryEffect(id: country.hashValue, in: animation)
                     } // Button
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 6)
                 } // WrappingHStack
                 .padding(.vertical, 12)
             } else {

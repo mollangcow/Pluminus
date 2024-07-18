@@ -5,11 +5,9 @@
 //  Created by kimsangwoo on 6/26/24.
 //
 
-import SwiftUI
-import MapKit
-import Foundation
 import CoreLocation
-
+import MapKit
+import SwiftUI
 
 extension CLLocationCoordinate2D: @retroactive Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
@@ -18,7 +16,7 @@ extension CLLocationCoordinate2D: @retroactive Equatable {
 }
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-    private var locationManager = CLLocationManager()
+    private var pvclLocationManager = CLLocationManager()
     private var geocoder = CLGeocoder()
     
     @Published var region = MKCoordinateRegion(
@@ -33,10 +31,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     override init() {
         super.init()
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
+        pvclLocationManager.delegate = self
+        pvclLocationManager.desiredAccuracy = kCLLocationAccuracyBest
+        pvclLocationManager.requestWhenInUseAuthorization()
+        pvclLocationManager.startUpdatingLocation()
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -79,57 +77,94 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 }
 
-
 struct CLMapView: View {
-    @StateObject private var locationManager = LocationManager()
-    @Binding var isShowingCLMapView : Bool
+    @StateObject private var sopvLocationManager = LocationManager()
+    @Binding var isShowingCLMapView: Bool
     @Binding var savedLocation: CLLocationCoordinate2D?
     var onSave: ((String) -> Void)? // Callback closure for passing location name
-        
+    
+    @Environment(\.dismiss) var dismiss
+    
     var body: some View {
         ZStack {
-            Map(coordinateRegion: $locationManager.region, showsUserLocation: true)
+            
+            Map(coordinateRegion: $sopvLocationManager.region, showsUserLocation: true)
                 .ignoresSafeArea(edges: .all)
                 .onAppear {
                     Pluminus.locationManager.locationManager.requestWhenInUseAuthorization()
                 }
-                .onChange(of: locationManager.region.center) { newCenter in
-                    locationManager.updateCenterCoordinate(newCenter)
+                .onChange(of: sopvLocationManager.region.center) { newCenter in
+                    sopvLocationManager.updateCenterCoordinate(newCenter)
                 }
             
-            // Center pin
-            Image(systemName: "mappin.circle.fill")
-                .font(.largeTitle)
-                .foregroundColor(.red)
-                .offset(x: 0, y: -20)
+            Image(systemName: "circle.fill")
+                .resizable()
+                .frame(width: 30, height: 20)
+                .foregroundStyle(Color.black.opacity(0.4))
+                .offset(x: 0, y: 0)
             
+            Image(systemName: "circle.fill")
+                .resizable()
+                .frame(width: 50, height: 50)
+                .foregroundStyle(Color.white)
+                .offset(x: 0, y: -50)
+            
+            Image("locationPin")
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 61, height: 80)
+                .foregroundStyle(Color.orange)
+                .offset(x: 0, y: -40) // Change offset based on dragging state
+
             VStack {
+                HStack {
+                    Spacer()
+                    
+                    // dismiss button
+                    Button {
+                        HapticManager.instance.impact(style: .light)
+                        dismiss()
+                    } label: {
+                        Rectangle()
+                            .foregroundStyle(.clear)
+                            .background(.ultraThickMaterial)
+                            .clipShape(Circle())
+                            .overlay {
+                                Image(systemName: "xmark")
+                                    .resizable()
+                                    .bold()
+                                    .foregroundStyle(.orange)
+                                    .frame(width: 14, height: 14)
+                            }
+                            .frame(width: 32, height: 32)
+                            .padding(.all, 20)
+                    } //button
+                } //HStack
+                
                 Spacer()
-                Text(locationManager.locationName)
+                
+                Text(sopvLocationManager.locationName)
                     .padding()
-                    .background(Color.white.opacity(0.8))
+                    .background(Color.white)
                     .cornerRadius(10)
                     .padding(.bottom, 20)
                 
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        // Save current location
-                        savedLocation = locationManager.region.center
-                        onSave?(locationManager.locationName) // 위치 이름과 시간대 오프셋을 전달
-                    }) {
-                        Text("Save")
-                            .font(.title2)
-                            .padding()
-                            .background(locationManager.isLocationValid() ? Color.blue : Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .shadow(radius: 10)
-                    }
-                    .padding()
-                    .disabled(!locationManager.isLocationValid())
+                Button {
+                    // Save current location
+                    savedLocation = sopvLocationManager.region.center
+                    onSave?(sopvLocationManager.locationName) // 위치 이름과 시간대 오프셋을 전달
+                } label: {
+                    Text("Save")
+                        .font(.title2)
+                        .frame(width: screenWidth * 0.8, height: 70)
+                        .background(sopvLocationManager.isLocationValid() ? Color.orange : Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(35)
                 }
-            }
-        }
-    }
-}
+                .padding(.bottom, 40)
+                .disabled(!sopvLocationManager.isLocationValid())
+            } //VStack
+        } //ZStack
+        .ignoresSafeArea()
+    } //body
+} //struct

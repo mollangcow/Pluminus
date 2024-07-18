@@ -101,9 +101,28 @@ class CountriesViewModel: ObservableObject {
 }
 
 struct CountryModel: Codable, Identifiable, Hashable {
-    let id = UUID()
+    var id: UUID
     var country: String
     var cities: [String]
+
+    init(country: String, cities: [String]) {
+        self.id = UUID()  // 새로 생성된 UUID
+        self.country = country
+        self.cities = cities
+    }
+
+    // JSON 디코딩 시 id 제외
+    private enum CodingKeys: String, CodingKey {
+        case country
+        case cities
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.country = try container.decode(String.self, forKey: .country)
+        self.cities = try container.decode([String].self, forKey: .cities)
+        self.id = UUID()  // 새로 생성된 UUID
+    }
 }
 
 struct CountriesData: Codable {

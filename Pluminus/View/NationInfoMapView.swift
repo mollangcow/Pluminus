@@ -44,8 +44,8 @@ struct NationInfoMapView: View {
                             }
                             .frame(width: 32, height: 32)
                             .padding(.all, 20)
-                    } // button
-                }
+                    } //button
+                } //HStack
                 
                 Spacer()
                 

@@ -7,7 +7,6 @@
 
 import CoreLocation
 import SwiftUI
-import WrappingHStack
 
 struct MainView: View {
     @StateObject var locationManager = MyLocationManager()
@@ -52,12 +51,12 @@ struct MainView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(currentTimeAString)
-                            .font(.system(size: isShowingResult ? 32 : 72, weight: isShowingResult ? .thin : .heavy))
+                            .font(.system(size: isShowingResult ? 32 : 68, weight: isShowingResult ? .thin : .heavy))
                             .foregroundStyle(isShowingResult ? Color.white : Color.primary)
                             .contentTransition(.numericText())
                         
                         Text(currentTimeHMMSSString)
-                            .font(.system(size: 72, weight: isShowingResult ? .thin : .heavy))
+                            .font(.system(size: 68, weight: isShowingResult ? .thin : .heavy))
                             .foregroundStyle(isShowingResult ? Color.white : Color.primary)
                             .contentTransition(.numericText())
                         
@@ -187,13 +186,16 @@ struct MainView: View {
                     .presentationDetents([.large])
                     .presentationCornerRadius(32)
             }
+//            .sheet(isPresented: $isShowingCLMapView) {
+//                CLMapView(isShowingCLMapView: $isShowingCLMapView, savedLocation: $savedLocation) { locationName in
+//                    cLName = locationName
+//                    isShowingCLMapView = false
+//                }
+//                .presentationDetents([.large])
+//                .presentationCornerRadius(32)
+//            }
             .sheet(isPresented: $isShowingCLMapView) {
-                CLMapView(isShowingCLMapView: $isShowingCLMapView, savedLocation: $savedLocation) { locationName in
-                    cLName = locationName
-                    isShowingCLMapView = false // Dismiss sheet after saving
-                }
-                .presentationDetents([.large])
-                .presentationCornerRadius(32)
+                TestAPI()
             }
             .background(
                 BackColorView(
